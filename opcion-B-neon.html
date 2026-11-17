@@ -262,6 +262,7 @@ const SALON = {
   instagram: '@_grace_lu',
   horario: 'Lunes a viernes 10:00 a 19:30 · Sábado 10:00 a 15:00',
   abonoPct: 30, abonoMin: 5000, minutosReserva: 15,
+  fotos: false, // poner en true cuando existan las fotos reales en img/
 };
 
 const CATS = { alisado:'Alisados', reparacion:'Reparación y botox', fantasia:'Colores fantasía', masaje:'Masajes capilares' };
@@ -322,7 +323,7 @@ const dur = m => m < 60 ? `${m} min` : `${Math.floor(m/60)} h${m%60 ? ' '+m%60+'
 const abonoDe = s => Math.max(SALON.abonoMin, Math.round(s.precio * SALON.abonoPct / 100 / 500) * 500);
 
 /* ---------- estado ---------- */
-const CLAVE = 'demo-gracelu-v4';
+const CLAVE = 'demo-gracelu-v5';
 let S;
 function semilla() {
   const h = hoy();
@@ -387,9 +388,17 @@ function semilla() {
     [5,'Ciclo de masajes relajantes','masaje',6,4,10],
     [9,'Mantención de mechas turquesa','mantfan',3,5,-1],
   ].map((x,i) => ({ id:'pl'+i, clientaId:'c'+x[0], nombre:x[1], servId:x[2], total:x[3], cada:x[4], inicio:masDias(h, -x[5]*7) }));
-  return { planes, servicios: JSON.parse(JSON.stringify(SERVICIOS_BASE)), clientas, citas, pagos, bot:{ activo:true, recordatorios:true }, chatsHoy: 14 };
+  return { sembrado: h, planes, servicios: JSON.parse(JSON.stringify(SERVICIOS_BASE)), clientas, citas, pagos, bot:{ activo:true, recordatorios:true }, chatsHoy: 14 };
 }
-function cargar() { try { const t = localStorage.getItem(CLAVE); if (t) { S = JSON.parse(t); if (!S.planes) S.planes = []; return; } } catch(e) {} S = semilla(); }
+function cargar() {
+  try { const t = localStorage.getItem(CLAVE); if (t) { S = JSON.parse(t); if (!S.planes) S.planes = [];
+    // datos de más de 2 días: la agenda quedaría en el pasado, así que se vuelve a sembrar con fechas de hoy
+    if (!S.sembrado || Math.abs(diasEntre(S.sembrado, hoy())) >= 2) { S = semilla(); guardar(); return; }
+    // la hora de muestra "esperando abono" vuelve a correr en cada visita, para que el contador siempre se vea
+    const m = S.citas.find(x => x.id === 'pe1'); if (m && (m.estado === 'liberada' || (m.estado === 'pendiente' && m.expira <= Date.now()))) { m.estado = 'pendiente'; m.expira = Date.now() + 9*60e3; }
+    return; } } catch(e) {}
+  S = semilla(); guardar();
+}
 function guardar() { try { localStorage.setItem(CLAVE, JSON.stringify(S)); } catch(e) {} }
 const serv = id => S.servicios.find(s => s.id === id);
 const pro = id => EQUIPO.find(p => p.id === id);
@@ -482,7 +491,7 @@ function mechas(seed, n = 30) {
 }
 const foto = (nombre, seed, extra='') => `<div class="foto ${extra}" data-foto="${nombre}">${mechas(seed)}</div>`;
 const FOTOS = {};
-function cargarFotos() { document.querySelectorAll('[data-foto]').forEach(el => { const n = el.dataset.foto, poner = () => { el.style.backgroundImage = `url(img/${n}.jpg)`; el.classList.add('con-foto'); };
+function cargarFotos() { if (!SALON.fotos) return; document.querySelectorAll('[data-foto]').forEach(el => { const n = el.dataset.foto, poner = () => { el.style.backgroundImage = `url(img/${n}.jpg)`; el.classList.add('con-foto'); };
   if (FOTOS[n] === true) return poner(); if (FOTOS[n] === false) return; const im = new Image(); im.onload = () => { FOTOS[n] = true; poner(); }; im.onerror = () => { FOTOS[n] = false; }; im.src = `img/${n}.jpg`; }); }
 
 const ICONO = {
@@ -625,10 +634,10 @@ let A = { dia:null, q:'', cita:null, rec:null, plan:null };
 const chipEstado = c => `<span class="est est-${c.estado}">${c.estado === 'pendiente' ? `Esperando abono · <b data-reloj="${c.id}">${restante(c)}</b>` : ETIQ[c.estado]}</span>`;
 const tarjetaCita = c => { const s = serv(c.servId); return `<button class="cita est-b-${c.estado}" data-act="a-cita" data-id="${c.id}"><span class="ch">${c.hora}<small>${aHora(aMin(c.hora) + s.min)}</small></span><span class="cc"><b>${esc(clienta(c.clientaId).nombre)}</b><small>${esc(s.nombre)} · ${pro(c.proId).nombre}</small>${chipEstado(c)}</span><span class="co o-${c.origen}">${ORIGEN[c.origen]}</span></button>`; };
 const Admin = {
-  hoy() { const h = hoy(), citas = S.citas.filter(c => c.fecha === h && c.estado !== 'liberada').sort((a,b) => a.hora.localeCompare(b.hora)), pend = S.citas.filter(c => c.estado === 'pendiente' && c.expira > Date.now()), seg = seguimiento(), sem = Date.now() - 7*864e5;
+  hoy() { const h = sigAbierto(hoy()), cerradoHoy = h !== hoy(), citas = S.citas.filter(c => c.fecha === h && c.estado !== 'liberada').sort((a,b) => a.hora.localeCompare(b.hora)), pend = S.citas.filter(c => c.estado === 'pendiente' && c.expira > Date.now()), seg = seguimiento(), sem = Date.now() - 7*864e5;
     const abSem = S.pagos.filter(p => p.ts > sem).reduce((a,p) => a + p.monto, 0), porWsp = S.citas.filter(c => c.fecha >= h && c.origen !== 'salon' && c.estado === 'confirmada').length;
-    return `<div class="kpis"><div class="kpi"><span>Citas de hoy</span><b>${citas.length}</b><small>${abierto(h) ? fDiaLargo(h) : 'Domingo: salón cerrado'}</small></div><div class="kpi"><span>Abonos de los últimos 7 días</span><b>${clp(abSem)}</b><small>${S.pagos.filter(p => p.ts > sem).length} pagos recibidos</small></div><div class="kpi ${pend.length ? 'alerta':''}"><span>Horas esperando abono</span><b>${pend.length}</b><small>Se liberan solas al vencer</small></div><div class="kpi"><span>Reservas sin intervención</span><b>${porWsp}</b><small>Próximas, tomadas por web o bot</small></div></div>
-    <div class="dos"><section class="caja"><h3>Agenda de hoy</h3>${citas.length ? citas.map(tarjetaCita).join('') : '<p class="vacio">Sin citas para hoy. Las reservas nuevas aparecen aquí solas.</p>'}${pend.filter(c => c.fecha !== h).length ? `<h3 class="sub">Esperando abono en otros días</h3>${pend.filter(c => c.fecha !== h).map(tarjetaCita).join('')}` : ''}</section>
+    return `<div class="kpis"><div class="kpi"><span>${cerradoHoy ? 'Citas del próximo día abierto' : 'Citas de hoy'}</span><b>${citas.length}</b><small>${cerradoHoy ? 'Hoy cerrado · ' : ''}${fDiaLargo(h)}</small></div><div class="kpi"><span>Abonos de los últimos 7 días</span><b>${clp(abSem)}</b><small>${S.pagos.filter(p => p.ts > sem).length} pagos recibidos</small></div><div class="kpi ${pend.length ? 'alerta':''}"><span>Horas esperando abono</span><b>${pend.length}</b><small>Se liberan solas al vencer</small></div><div class="kpi"><span>Reservas sin intervención</span><b>${porWsp}</b><small>Próximas, tomadas por web o bot</small></div></div>
+    <div class="dos"><section class="caja"><h3>${cerradoHoy ? 'Agenda del ' + fDia(h) : 'Agenda de hoy'}</h3>${citas.length ? citas.map(tarjetaCita).join('') : '<p class="vacio">Sin citas. Las reservas nuevas aparecen aquí solas.</p>'}${pend.filter(c => c.fecha !== h).length ? `<h3 class="sub">Esperando abono</h3>${pend.filter(c => c.fecha !== h).map(tarjetaCita).join('')}` : ''}</section>
     <section class="caja"><h3>A quién le toca volver</h3>${seg.slice(0,5).map(filaSeg).join('') || '<p class="vacio">Nadie pendiente por ahora.</p>'}<a class="enlace" href="#/admin/seguimiento">Ver todas (${seg.length})</a></section></div>`; },
   agenda() { const dias = proximosDias(7); if (!A.dia || !dias.includes(A.dia)) A.dia = dias[0]; const citas = S.citas.filter(c => c.fecha === A.dia && c.estado !== 'liberada');
     return `<div class="barra"><div class="dias">${dias.map(d => `<button class="dia ${d === A.dia ? 'on':''}" data-act="a-dia" data-id="${d}"><small>${deIso(d).toLocaleDateString('es-CL',{weekday:'short'}).replace('.','')}</small><b>${deIso(d).getDate()}</b></button>`).join('')}</div><button class="btn btn-p" data-act="a-nueva">+ Agendar en el salón</button></div>
@@ -684,7 +693,8 @@ const GUIA = [
   { t:'La ficha de cada clienta', d:'Su plan, en qué sesión va, su historial completo y tus notas técnicas: fórmulas, alergias y preferencias. Desde aquí también creas un plan nuevo.', b:'Abrir una ficha', ir: () => { location.hash = '#/admin/clientas/c10'; } },
   { t:'Tus precios, cuando quieras', d:'Cambias un precio o cada cuánto se repite un servicio, y se actualiza al instante en el sitio, en la reserva y en el bot.', b:'Ver mis precios', ir: () => { location.hash = '#/admin/precios'; } },
 ];
-let G = { abierta:true, paso:0 };
+// en celular la guía parte minimizada para no tapar la pantalla; se abre tocando la píldora
+let G = { abierta: window.innerWidth >= 700, paso:0 };
 try { const g = JSON.parse(localStorage.getItem(CLAVE + '-guia')); if (g) G = g; } catch(e) {}
 function pintarGuia() { try { localStorage.setItem(CLAVE + '-guia', JSON.stringify(G)); } catch(e) {}
   const p = GUIA[G.paso], n = GUIA.length;
@@ -709,7 +719,7 @@ document.addEventListener('click', e => { const sc = e.target.closest('[data-scr
   if (a === 'g-min') { G.abierta = !G.abierta; return pintarGuia(); } if (a === 'g-sig' || a === 'g-ant') { G.paso = Math.max(0, Math.min(GUIA.length - 1, G.paso + (a === 'g-sig' ? 1 : -1))); return pintarGuia(); }
   if (a === 'g-ir') { if (window.innerWidth < 700) G.abierta = false; GUIA[G.paso].ir(); return pintarGuia(); }
   if (a === 'reservar') return abrirReserva(d.serv); if (a === 'chat') return abrirChat(); if (a === 'chip') return botRecibe(d.v, d.t); if (a === 'chat-pagar') return chatPagar(el);
-  if (a === 'reiniciar') { try { localStorage.removeItem(CLAVE); } catch(e) {} S = semilla(); C = null; R = null; G = { abierta:true, paso:0 }; pintarGuia(); A = { dia:null, q:'', cita:null, rec:null, plan:null }; $('#chat').classList.remove('on'); $('#chat').innerHTML = ''; $('#modal').innerHTML = ''; pintar(); return toast('Demo reiniciada con los datos iniciales.'); }
+  if (a === 'reiniciar') { try { localStorage.removeItem(CLAVE); } catch(e) {} S = semilla(); C = null; R = null; G = { abierta: window.innerWidth >= 700, paso:0 }; pintarGuia(); A = { dia:null, q:'', cita:null, rec:null, plan:null }; $('#chat').classList.remove('on'); $('#chat').innerHTML = ''; $('#modal').innerHTML = ''; pintar(); return toast('Demo reiniciada con los datos iniciales.'); }
   if (a === 'a-dia') { A.dia = d.id; return pintar(); } if (a === 'a-nueva') return abrirReserva(null, true); if (a === 'a-cita') { A.cita = d.id; A.rec = null; return pintar(); }
   if (a === 'a-cerrar' || a === 'a-cerrar-ir') { A.cita = null; A.rec = null; A.plan = null; return pintar(); }
   if (a === 'a-rec') { A.rec = leToca(d.c).find(x => x.servId === d.s); A.cita = null; return pintar(); }
