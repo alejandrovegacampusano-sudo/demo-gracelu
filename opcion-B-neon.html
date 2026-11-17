@@ -167,6 +167,9 @@ select{font:inherit;color:var(--ink);background:var(--campo,var(--panel));border
 @media(max-width:860px){body[data-vista=admin] #guia{bottom:74px}}
 @media(max-width:640px){#guia{left:12px;bottom:14px}.guia-c{width:calc(100vw - 24px)}body[data-vista=sitio] .guia-c{margin-bottom:64px}}
 @media(min-width:861px){body[data-vista=admin] #guia{left:auto;right:18px}}
+.acepto{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13.5px;color:var(--ink);cursor:pointer;line-height:1.45}.acepto input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--accent);flex:none}
+.permiso{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:13px;color:var(--muted);cursor:pointer}.permiso input{width:15px;height:15px;margin:0;accent-color:var(--ok)}
+.sinpermiso{font-size:12px;color:var(--muted);white-space:nowrap;border:1px dashed var(--line-fuerte,var(--line));padding:5px 9px;border-radius:999px}
 
 /* ===== estructura común del sitio público (cada tema la viste distinto) ===== */
 .sitio{overflow-x:clip}
@@ -205,6 +208,10 @@ select{font:inherit;color:var(--ink);background:var(--campo,var(--panel));border
 .nav .logo{display:flex;align-items:center;gap:12px;line-height:1}.nav .logo img{width:46px;height:46px;border-radius:50%;display:block}
 .nav .logo small{display:block;font-family:var(--fb);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-top:4px;font-style:normal}
 .eq-grid{grid-template-columns:repeat(auto-fit,minmax(180px,250px));justify-content:center}
+.politica{max-width:760px;margin:28px auto 0;font-size:13.5px;color:var(--muted);text-align:center;line-height:1.5}.politica b{color:var(--ink)}
+.prod-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;max-width:1120px;margin:0 auto}.prod{text-align:center}.prod-foto{aspect-ratio:1;margin-bottom:14px;border-radius:var(--r,12px)}.prod h3{font-size:20px}.prod p{font-size:13.5px;color:var(--muted);margin-top:4px}
+.pie a{color:inherit}
+@media(max-width:900px){.prod-grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.prod-grid{grid-template-columns:1fr 1fr;gap:12px}.prod h3{font-size:17px}}
 
 
 em{font-weight:600}
@@ -244,6 +251,7 @@ em{font-weight:600}
 .cierre{background:radial-gradient(50% 90% at 50% 110%,#3A1A55,transparent)}
 @media(max-width:900px){.hero-medalla{width:min(58%,250px);transform:translate(-50%,-52%)}}
 .pasos-l li.clave b,.pasos-l li.clave span{color:#fff}.pasos-l li.clave::before{color:#fff}
+.productos{background:#0D0913;border-block:1px solid var(--line)}.prod-foto{border:1px solid var(--line)}
 
 </style></head>
 <body><div id="demo"></div><div id="app"></div><div id="modal"></div><div id="cajon"></div><div id="chat"></div><div id="guia"></div><div id="toast" role="status"></div>
@@ -257,7 +265,9 @@ const LOGO = 'data:image/webp;base64,UklGRq6FAABXRUJQVlA4WAoAAAAQAAAAtwEAtwEAQUx
 const SALON = {
   nombre: 'Grace Lu',
   bajada: 'Alisados',
-  direccion: 'Dirección del salón (por definir)',
+  direccion: 'Dirección del salón (la confirmamos contigo)',
+  instagramUrl: 'https://instagram.com/_grace_lu',
+  politica: 'El abono se descuenta del total el día de tu atención. Puedes cambiar tu hora sin costo hasta 24 horas antes y el abono se traslada. Si no llegas o avisas con menos de 24 horas, el abono no se devuelve.',
   telefono: '+56 9 0000 0000',
   instagram: '@_grace_lu',
   horario: 'Lunes a viernes 10:00 a 19:30 · Sábado 10:00 a 15:00',
@@ -292,6 +302,14 @@ const EQUIPO = [
 ];
 
 // Historia de EJEMPLO: se reescribe con la historia real que cuente Grace.
+// Productos de EJEMPLO: Grace tiene línea propia con punto de venta (visto en su Instagram). Nombres y textos se reemplazan por los reales; sin precios para no inventarlos.
+const PRODUCTOS = [
+  { nombre:'Shampoo post alisado', texto:'Sin sal ni sulfatos, para que el liso dure más.' },
+  { nombre:'Mascarilla reparadora', texto:'Para mantener en casa el efecto del botox y la reparación molecular.' },
+  { nombre:'Protector térmico', texto:'Antes de la plancha o el secador.' },
+  { nombre:'Mantención de color fantasía', texto:'Para que el rosado, violeta o turquesa no se apague entre visitas.' },
+];
+
 const HISTORIA = [
   { anio:'Inicio', titulo:'Una plancha y muchas ganas', texto:'Grace empezó alisando a amigas y conocidas. El dato corrió de boca en boca más rápido que cualquier aviso.' },
   { anio:'Oficio', titulo:'Especialista en alisados', texto:'Se formó en técnicas de alisado y reparación, y sumó el nano botox y la reparación molecular de L\'Oréal.' },
@@ -426,13 +444,15 @@ function libresServ(servId, proId, fecha) {
 function proximosDias(n) { const out = []; let d = hoy(); while (out.length < n) { if (abierto(d)) out.push(d); d = masDias(d,1); } return out; }
 
 /* ---------- reservas ---------- */
-function buscarOCrearClienta(nombre, tel) {
+function buscarOCrearClienta(nombre, tel, avisos) {
   const n = nombre.trim(); let c = S.clientas.find(x => x.nombre.toLowerCase() === n.toLowerCase());
-  if (!c) { c = { id: uid('c'), nombre:n, tel: tel || 'sin teléfono', notas:'', recordado:null, nueva:true }; S.clientas.push(c); }
+  if (!c) { c = { id: uid('c'), nombre:n, tel: tel || 'sin teléfono', notas:'', recordado:null, nueva:true, avisos: avisos !== false }; S.clientas.push(c); }
+  else if (avisos === true) c.avisos = true;
   return c;
 }
-function tomarHora({ nombre, tel, servId, proId, fecha, hora, origen }) {
-  const c = buscarOCrearClienta(nombre, tel);
+const aceptaAvisos = c => c.avisos !== false;
+function tomarHora({ nombre, tel, servId, proId, fecha, hora, origen, avisos }) {
+  const c = buscarOCrearClienta(nombre, tel, avisos);
   const cita = { id: uid('r'), clientaId:c.id, servId, proId, fecha, hora, estado:'pendiente', abono:abonoDe(serv(servId)), origen, nota:'', expira: Date.now() + SALON.minutosReserva*60e3 };
   S.citas.push(cita); guardar(); return cita;
 }
@@ -479,6 +499,16 @@ function mensajeRecordatorio(x) {
   return `Hola ${nom} 💜 Te escribimos de ${SALON.nombre}. Ya pasaron ${Math.round(diasEntre(x.ultima, hoy())/7)} semanas desde tu ${minus(serv(x.origenServ).nombre)} y te toca: ${s.nombre} (${clp(s.precio)}). ¿Te reservo una hora esta semana? Responde este mensaje y la agendamos con un abono de ${clp(abonoDe(s))}.`;
 }
 
+/* ---------- exportar clientas (los datos son del salón y se los lleva cuando quiera) ---------- */
+function csvClientas() {
+  const f = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const filas = [['Nombre','WhatsApp','Acepta avisos','Visitas','Última visita','Total gastado','Próxima sugerida','Notas'].map(f).join(';')];
+  S.clientas.forEach(c => { const at = S.citas.filter(x => x.clientaId === c.id && x.estado === 'atendida').sort((a,b) => b.fecha.localeCompare(a.fecha)), t = leToca(c.id)[0];
+    filas.push([c.nombre, c.tel, aceptaAvisos(c) ? 'sí' : 'no', at.length, at[0] ? at[0].fecha : '', at.reduce((a,x) => a + serv(x.servId).precio, 0), t ? serv(t.servId).nombre + ' ' + t.fecha : '', c.notas].map(f).join(';')); });
+  return '\ufeff' + filas.join('\n');
+}
+function descargar(nombre, contenido) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([contenido], { type:'text/csv;charset=utf-8' })); a.download = nombre; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+
 /* ---------- arte: mechas de pelo en SVG (reemplazables por fotos reales en /img) ---------- */
 function mechas(seed, n = 30) {
   let r = seed * 9301 + 49297; const rnd = () => (r = (r * 9301 + 49297) % 233280) / 233280;
@@ -523,7 +553,7 @@ const ORIGEN = { web:'Web', whatsapp:'WhatsApp', salon:'En el salón' };
 /* ---------- secciones compartidas del sitio ---------- */
 const Sitio = {
   nav: () => `<header class="nav"><a class="logo" href="#/sitio"><img src="${LOGO}" alt="" width="46" height="46"><span>${esc(SALON.nombre)}<small>${esc(SALON.bajada)}</small></span></a>
-    <nav><a href="#servicios" data-scroll>Servicios</a><a href="#precios" data-scroll>Precios</a><a href="#historia" data-scroll>Historia</a><a href="#equipo" data-scroll>Equipo</a></nav>
+    <nav><a href="#servicios" data-scroll>Servicios</a><a href="#precios" data-scroll>Precios</a><a href="#productos" data-scroll>Productos</a><a href="#historia" data-scroll>Historia</a><a href="#equipo" data-scroll>Equipo</a></nav>
     <button class="btn btn-p" data-act="reservar">Agendar hora</button></header>`,
   precios: () => `<section class="sec precios" id="precios"><div class="sec-cab"><p class="ceja">Lista de precios</p><h2>Precios claros, <em>sin sorpresas</em></h2>
     <p class="sec-txt">Cada hora se reserva con un abono del ${SALON.abonoPct}%, que se descuenta del total el día de tu atención.</p></div>
@@ -535,18 +565,20 @@ const Sitio = {
       <li class="clave"><b>Pagas el abono del ${SALON.abonoPct}%</b><span>Tienes ${SALON.minutosReserva} minutos. Si no se paga, la hora se libera sola y otra clienta puede tomarla.</span></li>
       <li><b>Recibes la confirmación</b><span>Te llega por WhatsApp, con un recordatorio el día anterior.</span></li>
       <li><b>Te avisamos cuándo te toca volver</b><span>Según lo que te hicimos: retoque de alisado, mantención del color, botox o masaje.</span></li>
-    </ol></section>`,
+    </ol><p class="politica"><b>Política de abono.</b> ${esc(SALON.politica)}</p></section>`,
+  productos: () => `<section class="sec productos" id="productos"><div class="sec-cab"><p class="ceja">Productos con sello propio</p><h2>Lleva el cuidado <em>a tu casa</em></h2><p class="sec-txt">Línea ${esc(SALON.nombre)}, disponible en el salón. Pregunta por el tuyo en tu próxima visita.</p></div>
+    <div class="prod-grid">${PRODUCTOS.map((p,i) => `<article class="prod">${foto('producto-'+(i+1), 60+i*7, 'prod-foto')}<h3>${esc(p.nombre)}</h3><p>${esc(p.texto)}</p></article>`).join('')}</div></section>`,
   historia: () => `<section class="sec historia" id="historia"><div class="hist-img">${foto('historia', 7, 'arco')}</div><div class="hist-txt"><p class="ceja">Nuestra historia</p><h2>De una plancha y muchas ganas <em>a tu salón de confianza</em></h2>
     <ol class="linea">${HISTORIA.map(h => `<li><span class="anio">${h.anio}</span><div><b>${h.titulo}</b><p>${h.texto}</p></div></li>`).join('')}</ol></div></section>`,
   equipo: () => `<section class="sec equipo" id="equipo"><div class="sec-cab"><p class="ceja">Equipo</p><h2>Quién te <em>atiende</em></h2></div>
     <div class="eq-grid">${EQUIPO.map((p,i) => `<article class="eq">${foto('equipo-'+p.id, 11+i*5, 'eq-foto')}<h3>${p.nombre}</h3><p>${p.rol}</p></article>`).join('')}</div></section>`,
   cierre: () => `<section class="sec cierre"><h2>¿Cuándo <em>te esperamos?</em></h2><p>${SALON.horario}<br>${SALON.direccion}</p>
-    <div class="cierre-b"><button class="btn btn-p" data-act="reservar">Agendar con abono</button><button class="btn btn-s" data-act="chat">${ICONO.wsp} Agendar por WhatsApp</button></div></section>`,
-  pie: () => `<footer class="pie"><div><b>${esc(SALON.nombre)}</b><span>${SALON.direccion}</span><span>${SALON.telefono} · Instagram ${SALON.instagram}</span></div><div><span>${SALON.horario}</span><a href="#/admin/hoy">Acceso del salón</a></div>
+    <div class="cierre-b"><button class="btn btn-p" data-act="reservar">Agendar con abono</button><button class="btn btn-s" data-act="chat">${ICONO.wsp} Agendar por WhatsApp</button><a class="btn btn-s" href="${SALON.instagramUrl}" target="_blank" rel="noopener">Instagram ${esc(SALON.instagram)}</a></div></section>`,
+  pie: () => `<footer class="pie"><div><b>${esc(SALON.nombre)}</b><span>${SALON.direccion}</span><span>${SALON.telefono} · <a href="${SALON.instagramUrl}" target="_blank" rel="noopener">Instagram ${esc(SALON.instagram)}</a></span></div><div><span>${SALON.horario}</span><a href="#/admin/hoy">Acceso del salón</a></div>
     <p class="autor">Demo con datos ficticios · Desarrollado por <a href="https://movanorte.cl" target="_blank" rel="noopener">Movanorte</a></p></footer>`,
 };
 function vistaSitio() {
-  const partes = { hero: TEMA.hero, destacados: TEMA.destacados, ...Sitio };
+  const partes = { hero: TEMA.hero, destacados: TEMA.destacados, ...Sitio }; if (!TEMA.orden.includes('productos')) TEMA.orden.splice(TEMA.orden.indexOf('equipo'), 0, 'productos');
   return `<div class="sitio">${Sitio.nav()}${TEMA.orden.map(k => partes[k]()).join('')}${Sitio.pie()}</div>
     <button class="fab-wsp" data-act="chat" aria-label="Abrir WhatsApp">${ICONO.wsp}<span>Escríbenos</span></button>`;
 }
@@ -565,13 +597,14 @@ function pintarReserva() {
     cuerpo = `<h3>Elige día y hora</h3><div class="dias">${dias.map(d => `<button class="dia ${d === R.fecha ? 'on':''}" data-act="r-dia" data-id="${d}"><small>${deIso(d).toLocaleDateString('es-CL',{weekday:'short'}).replace('.','')}</small><b>${deIso(d).getDate()}</b></button>`).join('')}</div>
       <p class="grupo">${fDiaLargo(R.fecha)}</p><div class="horas">${hs.length ? hs.map(x => `<button class="hora" data-act="r-hora" data-id="${x.hora}" data-pro="${x.proId}">${x.hora}</button>`).join('') : '<p class="vacio">No quedan horas este día. Prueba con otro.</p>'}</div>`; }
   if (R.paso === 4) cuerpo = `<h3>${R.admin ? 'Datos de la clienta' : '¿A nombre de quién?'}</h3><label>Nombre y apellido<input id="r-nombre" value="${esc(R.nombre)}" placeholder="Ej: María Pérez" autocomplete="off"></label><label>WhatsApp<input id="r-tel" value="${esc(R.tel)}" placeholder="+56 9 ..." inputmode="tel" autocomplete="off"></label>
-      <p class="nota">Por ese número te llega la confirmación y el aviso de cuándo te toca volver. En la demo no se envía nada.</p><button class="btn btn-p ancho" data-act="r-datos">Continuar al abono</button>`;
+      <label class="acepto"><input type="checkbox" id="r-avisos" ${R.avisos !== false ? 'checked' : ''}><span>Quiero recibir por WhatsApp la confirmación, el recordatorio y el aviso de cuándo me toca volver. Puedo cancelarlo cuando quiera.</span></label>
+      <p class="nota">En la demo no se envía nada. Tus datos quedan solo en el salón.</p><button class="btn btn-p ancho" data-act="r-datos">Continuar al abono</button>`;
   if (R.paso === 5) { const c = S.citas.find(x => x.id === R.citaId);
     cuerpo = `<h3>Paga el abono para tomar la hora</h3><div class="reloj"><span>La hora se libera en</span><b id="r-reloj">${restante(c)}</b></div>
       <div class="resumen"><div><span>Servicio</span><b>${esc(s.nombre)}</b></div><div><span>Profesional</span><b>${pro(c.proId).nombre}</b></div><div><span>Cuándo</span><b>${fDia(c.fecha)} · ${c.hora}</b></div><div><span>Valor total</span><b>${clp(s.precio)}</b></div><div class="tot"><span>Abono ahora (${SALON.abonoPct}%)</span><b>${clp(c.abono)}</b></div><div><span>Saldo en el salón</span><b>${clp(s.precio - c.abono)}</b></div></div>
       ${R.admin ? `<button class="btn btn-p ancho" data-act="r-pagar" data-medio="Efectivo en salón">Registrar abono en efectivo ${clp(c.abono)}</button><button class="btn btn-s ancho" data-act="r-enlace">Enviar enlace de pago por WhatsApp</button>`
         : `<div class="medios">${['Webpay','Mercado Pago','Transferencia'].map(m => `<button class="medio ${R.medio === m ? 'on':''}" data-act="r-medio" data-id="${m}">${m}</button>`).join('')}</div>
-      <button class="btn btn-p ancho" data-act="r-pagar" data-medio="${R.medio}">Pagar abono ${clp(c.abono)}</button><p class="nota">Pago simulado: en la demo no se pide ninguna tarjeta ni se cobra nada.</p>`}
+      <button class="btn btn-p ancho" data-act="r-pagar" data-medio="${R.medio}">Pagar abono ${clp(c.abono)}</button><p class="nota">Al pagar aceptas la política de abono: ${esc(SALON.politica)}</p><p class="nota">Pago simulado: en la demo no se pide ninguna tarjeta ni se cobra nada.</p>`}
       <button class="enlace" data-act="r-vencer">Demo: adelantar ${SALON.minutosReserva} minutos sin pagar</button>`; }
   if (R.paso === 6) { const c = S.citas.find(x => x.id === R.citaId);
     cuerpo = `<div class="listo"><div class="check">✓</div><h3>Hora confirmada</h3><p><b>${esc(s.nombre)}</b> con ${pro(c.proId).nombre}<br>${fDiaLargo(c.fecha)} a las ${c.hora}</p><p class="nota">Abono recibido: ${clp(c.abono)}. Saldo el día de la atención: ${clp(s.precio - c.abono)}.<br>${s.ciclo ? `Después de tu atención te avisaremos por WhatsApp cuándo te toca ${minus(serv(s.sigue || s.id).nombre)} (en unas ${s.ciclo} semanas).` : ''}</p>
@@ -583,9 +616,9 @@ function pintarReserva() {
 const AccR = {
   'r-serv': d => { R.servId = d.id; R.proId = unicaPro(d.id); R.fecha = null; R.paso = R.proId ? 3 : 2; }, 'r-pro': d => { R.proId = d.id; R.fecha = null; R.paso = 3; }, 'r-dia': d => { R.fecha = d.id; },
   'r-hora': d => { R.hora = d.id; R.proFinal = d.pro; R.paso = 4; }, 'r-atras': () => { R.paso = (R.paso === 3 && unicaPro(R.servId)) ? 1 : R.paso - 1; }, 'r-medio': d => { R.medio = d.id; },
-  'r-datos': () => { R.nombre = $('#r-nombre').value.trim(); R.tel = $('#r-tel').value.trim(); if (R.nombre.length < 3) { toast('Escribe el nombre para dejar la hora a tu nombre.'); return; }
+  'r-datos': () => { R.nombre = $('#r-nombre').value.trim(); R.tel = $('#r-tel').value.trim(); R.avisos = $('#r-avisos').checked; if (R.nombre.length < 3) { toast('Escribe el nombre para dejar la hora a tu nombre.'); return; }
     if (!libresServ(R.servId, R.proFinal, R.fecha).some(x => x.hora === R.hora)) { toast('Esa hora se acaba de ocupar. Elige otra.'); R.paso = 3; return; }
-    R.citaId = tomarHora({ nombre:R.nombre, tel:R.tel, servId:R.servId, proId:R.proFinal, fecha:R.fecha, hora:R.hora, origen: R.admin ? 'salon' : 'web' }).id; R.paso = 5; },
+    R.citaId = tomarHora({ nombre:R.nombre, tel:R.tel, servId:R.servId, proId:R.proFinal, fecha:R.fecha, hora:R.hora, origen: R.admin ? 'salon' : 'web', avisos: R.avisos }).id; R.paso = 5; },
   'r-pagar': (d, el) => { el.disabled = true; el.textContent = 'Procesando pago…'; setTimeout(() => { if (pagarAbono(R.citaId, d.medio)) { R.paso = 6; pintarReserva(); if (ruta()[0] === 'admin') pintar(); } }, 1300); return 'no'; },
   'r-enlace': () => { toast('Enlace de pago enviado por WhatsApp (simulado). La hora espera el abono 15 minutos.'); R.citaId = null; cerrarReserva(); return 'no'; },
   'r-vencer': () => { const c = S.citas.find(x => x.id === R.citaId); c.expira = Date.now() - 1; tic(); return 'no'; },
@@ -610,6 +643,7 @@ function botRecibe(v, texto) {
   yoDigo(texto); const d = C.d;
   if (C.estado === 'nombre' && !v) { d.nombre = texto.trim(); const cita = tomarHora({ nombre:d.nombre, tel:'+56 9 (este chat)', servId:d.servId, proId:d.proId, fecha:d.fecha, hora:d.hora, origen:'whatsapp' }); d.citaId = cita.id; C.estado = 'pago'; const s = serv(d.servId);
     return botDice(`Gracias, ${esc(d.nombre.split(' ')[0])}. Te estoy guardando la hora por <b>${SALON.minutosReserva} minutos</b>:<br><br>💇 ${esc(s.nombre)}<br>👩 ${pro(d.proId).nombre}<br>📅 ${fDiaLargo(d.fecha)}, ${d.hora}<br>💰 Total ${clp(s.precio)}<br><br>Para dejarla tomada falta el abono de <b>${clp(cita.abono)}</b>. Sin abono, la hora se libera sola.`, [['Ahora no','nopago']], `<button class="pago-link" data-act="chat-pagar">🔒 Pagar abono ${clp(cita.abono)}<small>enlace de pago seguro · simulado</small></button>`); }
+  if (!v && /sin avisos|no quiero avisos|no me avisen/.test(texto.toLowerCase())) { const cl = C.d && C.d.citaId ? clienta(S.citas.find(x => x.id === C.d.citaId).clientaId) : null; if (cl) { cl.avisos = false; guardar(); } return botDice('Listo, no te enviaré avisos automáticos. Solo te escribiremos si tú nos escribes primero. 💜', [['Volver al menú','menu']]); }
   if (!v) { const t = texto.toLowerCase(); v = /precio|valor|cu[aá]nto|sale/.test(t) ? 'precios' : /hora|agend|reserv|cita|quiero/.test(t) ? 'agendar' : /direcci|d[oó]nde|horario|abren|ubic/.test(t) ? 'info' : /persona|humano|alguien|grace/.test(t) ? 'persona' : 'nose'; }
   if (v === 'menu') { C.estado = 'menu'; return botDice('¿En qué más te ayudo?', menuChips()); }
   if (v === 'precios') return botDice(Object.entries(CATS).map(([k,n]) => `<b>${n}</b><br>${S.servicios.filter(s => s.cat === k).map(s => `${esc(s.nombre)}: ${clp(s.precio)}`).join('<br>')}`).join('<br><br>') + `<br><br>Todas las horas se reservan con un abono del ${SALON.abonoPct}%.`, [['Agendar una hora','agendar'],['Volver al menú','menu']]);
@@ -626,7 +660,7 @@ function botRecibe(v, texto) {
   if (v === 'nopago') { C.estado = 'menu'; return botDice(`Ningún problema. Te guardo la hora ${SALON.minutosReserva} minutos por si te animas. Pasado ese tiempo se libera sola y le queda disponible a otra clienta.`, [['Volver al menú','menu']]); }
 }
 function chatPagar(el) { el.disabled = true; el.innerHTML = 'Procesando pago…'; setTimeout(() => { const d = C.d; if (!pagarAbono(d.citaId, 'Enlace WhatsApp')) { el.remove(); return botDice('Esa hora ya se liberó por tiempo. ¿Buscamos otra?', [['Agendar una hora','agendar']]); } el.outerHTML = '<div class="pago-ok">✓ Abono pagado</div>'; C.estado = 'menu'; const s = serv(d.servId); C.msgs.forEach(m => m.chips = []); const ult = C.msgs[C.msgs.length-1]; if (ult) ult.extra = '<div class="pago-ok">✓ Abono pagado</div>';
-  botDice(`✅ <b>¡Hora confirmada!</b><br>${esc(s.nombre)} con ${pro(d.proId).nombre}, ${fDiaLargo(d.fecha)} a las ${d.hora}.<br><br>Te voy a escribir el día anterior para recordarte.${s.ciclo ? ` Y en unas ${s.ciclo} semanas te aviso cuando te toque ${minus(serv(s.sigue || s.id).nombre)}.` : ''} 💜`, [['Volver al menú','menu']]); if (ruta()[0] === 'admin') pintar(); }, 1300); }
+  botDice(`✅ <b>¡Hora confirmada!</b><br>${esc(s.nombre)} con ${pro(d.proId).nombre}, ${fDiaLargo(d.fecha)} a las ${d.hora}.<br><br>Te voy a escribir por aquí el día anterior para recordarte (si no quieres avisos, escríbeme "sin avisos").${s.ciclo ? ` Y en unas ${s.ciclo} semanas te aviso cuando te toque ${minus(serv(s.sigue || s.id).nombre)}.` : ''} 💜`, [['Volver al menú','menu']]); if (ruta()[0] === 'admin') pintar(); }, 1300); }
 
 /* ---------- panel del salón ---------- */
 const TABS = [['hoy','Hoy'],['agenda','Agenda'],['seguimiento','Seguimiento'],['clientas','Clientas'],['precios','Precios'],['abonos','Abonos'],['bot','Bot']];
@@ -636,7 +670,7 @@ const tarjetaCita = c => { const s = serv(c.servId); return `<button class="cita
 const Admin = {
   hoy() { const h = sigAbierto(hoy()), cerradoHoy = h !== hoy(), citas = S.citas.filter(c => c.fecha === h && c.estado !== 'liberada').sort((a,b) => a.hora.localeCompare(b.hora)), pend = S.citas.filter(c => c.estado === 'pendiente' && c.expira > Date.now()), seg = seguimiento(), sem = Date.now() - 7*864e5;
     const abSem = S.pagos.filter(p => p.ts > sem).reduce((a,p) => a + p.monto, 0), porWsp = S.citas.filter(c => c.fecha >= h && c.origen !== 'salon' && c.estado === 'confirmada').length;
-    return `<div class="kpis"><div class="kpi"><span>${cerradoHoy ? 'Citas del próximo día abierto' : 'Citas de hoy'}</span><b>${citas.length}</b><small>${cerradoHoy ? 'Hoy cerrado · ' : ''}${fDiaLargo(h)}</small></div><div class="kpi"><span>Abonos de los últimos 7 días</span><b>${clp(abSem)}</b><small>${S.pagos.filter(p => p.ts > sem).length} pagos recibidos</small></div><div class="kpi ${pend.length ? 'alerta':''}"><span>Horas esperando abono</span><b>${pend.length}</b><small>Se liberan solas al vencer</small></div><div class="kpi"><span>Reservas sin intervención</span><b>${porWsp}</b><small>Próximas, tomadas por web o bot</small></div></div>
+    return `<div class="kpis"><div class="kpi"><span>${cerradoHoy ? 'Citas del próximo día abierto' : 'Citas de hoy'}</span><b>${citas.length}</b><small>${cerradoHoy ? 'Hoy cerrado · ' : ''}${fDiaLargo(h)}</small></div><div class="kpi"><span>Abonos de los últimos 7 días</span><b>${clp(abSem)}</b><small>${S.pagos.filter(p => p.ts > sem).length} pagos recibidos</small></div><div class="kpi ${pend.length ? 'alerta':''}"><span>Horas esperando abono</span><b>${pend.length}</b><small>Se liberan solas al vencer</small></div><div class="kpi"><span>Por cobrar ${cerradoHoy ? 'ese día' : 'hoy'}</span><b>${clp(citas.filter(c => c.estado === 'confirmada').reduce((a,c) => a + serv(c.servId).precio - c.abono, 0))}</b><small>Saldo de las citas confirmadas, abono ya descontado</small></div><div class="kpi"><span>Reservas sin intervención</span><b>${porWsp}</b><small>Próximas, tomadas por web o bot</small></div></div>
     <div class="dos"><section class="caja"><h3>${cerradoHoy ? 'Agenda del ' + fDia(h) : 'Agenda de hoy'}</h3>${citas.length ? citas.map(tarjetaCita).join('') : '<p class="vacio">Sin citas. Las reservas nuevas aparecen aquí solas.</p>'}${pend.filter(c => c.fecha !== h).length ? `<h3 class="sub">Esperando abono</h3>${pend.filter(c => c.fecha !== h).map(tarjetaCita).join('')}` : ''}</section>
     <section class="caja"><h3>A quién le toca volver</h3>${seg.slice(0,5).map(filaSeg).join('') || '<p class="vacio">Nadie pendiente por ahora.</p>'}<a class="enlace" href="#/admin/seguimiento">Ver todas (${seg.length})</a></section></div>`; },
   agenda() { const dias = proximosDias(7); if (!A.dia || !dias.includes(A.dia)) A.dia = dias[0]; const citas = S.citas.filter(c => c.fecha === A.dia && c.estado !== 'liberada');
@@ -646,7 +680,7 @@ const Admin = {
     const planes = S.planes.filter(p => !estadoPlan(p).completo).sort((a,b) => estadoPlan(a).dias - estadoPlan(b).dias);
     return `<section class="caja destaca"><h3>Planes de tratamiento en curso<small>${planes.length}</small></h3>${planes.map(p => bloquePlan(p, true)).join('') || '<p class="vacio">Ninguna clienta tiene un plan activo. Se crean desde la ficha de cada clienta.</p>'}</section><p class="intro">Para las clientas sin plan, el sistema calcula la próxima sesión según lo último que se hizo. Ejemplo: después de un alisado, le toca retoque de raíz a las 16 semanas; después de un color fantasía, mantención a las 5.</p>${g.map(([t,l]) => `<section class="caja"><h3>${t}<small>${l.length}</small></h3>${l.map(filaSeg).join('') || '<p class="vacio">Nadie en este grupo.</p>'}</section>`).join('')}`; },
   clientas(id) { if (id) return fichaClienta(id); const q = A.q.toLowerCase(), l = S.clientas.filter(c => c.nombre.toLowerCase().includes(q)).sort((a,b) => a.nombre.localeCompare(b.nombre));
-    return `<div class="barra"><input class="buscar" id="a-q" placeholder="Buscar clienta por nombre" value="${esc(A.q)}"><span class="cuenta">${l.length} clientas</span></div><section class="caja tabla">${l.map(c => { const at = S.citas.filter(x => x.clientaId === c.id && x.estado === 'atendida'), t = leToca(c.id)[0]; return `<a class="fila" href="#/admin/clientas/${c.id}"><span class="inicial">${esc(c.nombre[0])}</span><span class="fn"><b>${esc(c.nombre)}</b><small>${at.length} visitas · ${clp(at.reduce((a,x) => a + serv(x.servId).precio, 0))}</small></span><span class="ft">${t ? (t.agendada ? `<em class="ok">${esc(serv(t.servId).nombre)} ya agendado</em>` : `<em class="${t.dias < 0 ? 'mal' : t.dias <= 7 ? 'ojo' : ''}">${esc(serv(t.servId).nombre)} · ${textoDias(t.dias)}</em>`) : '<em>Sin ciclo activo</em>'}</span></a>`; }).join('')}</section>`; },
+    return `<div class="barra"><input class="buscar" id="a-q" placeholder="Buscar clienta por nombre" value="${esc(A.q)}"><span class="cuenta">${l.length} clientas</span><button class="btn btn-s chico" data-act="a-csv">Descargar clientas (Excel)</button></div><section class="caja tabla">${l.map(c => { const at = S.citas.filter(x => x.clientaId === c.id && x.estado === 'atendida'), t = leToca(c.id)[0]; return `<a class="fila" href="#/admin/clientas/${c.id}"><span class="inicial">${esc(c.nombre[0])}</span><span class="fn"><b>${esc(c.nombre)}</b><small>${at.length} visitas · ${clp(at.reduce((a,x) => a + serv(x.servId).precio, 0))}</small></span><span class="ft">${t ? (t.agendada ? `<em class="ok">${esc(serv(t.servId).nombre)} ya agendado</em>` : `<em class="${t.dias < 0 ? 'mal' : t.dias <= 7 ? 'ojo' : ''}">${esc(serv(t.servId).nombre)} · ${textoDias(t.dias)}</em>`) : '<em>Sin ciclo activo</em>'}</span></a>`; }).join('')}</section>`; },
   precios() { return `<p class="intro">Lo que cambies aquí se actualiza al instante en el sitio, en la reserva y en las respuestas del bot. El ciclo define cada cuántas semanas se le avisa a la clienta que le toca volver.</p><section class="caja tabla-p"><div class="tp cab"><span>Servicio</span><span>Precio</span><span>Minutos</span><span>Ciclo (semanas)</span><span>Abono</span></div>${S.servicios.map(s => `<div class="tp"><span><b>${esc(s.nombre)}</b><small>${CATS[s.cat]}${s.sigue ? ' · después toca ' + esc(serv(s.sigue).nombre) : ''}</small></span><label><i>Precio</i><input type="number" step="500" min="0" value="${s.precio}" data-campo="precio" data-id="${s.id}"></label><label><i>Minutos</i><input type="number" step="5" min="10" value="${s.min}" data-campo="min" data-id="${s.id}"></label><label><i>Ciclo</i><input type="number" min="0" value="${s.ciclo || ''}" placeholder="sin ciclo" data-campo="ciclo" data-id="${s.id}"></label><span class="ab" data-ab="${s.id}">${clp(abonoDe(s))}</span></div>`).join('')}</section>`; },
   abonos() { const l = [...S.pagos].sort((a,b) => b.ts - a.ts), tot = l.reduce((a,p) => a + p.monto, 0), lib = S.citas.filter(c => c.estado === 'liberada').length;
     return `<div class="kpis"><div class="kpi"><span>Abonos recibidos</span><b>${clp(tot)}</b><small>${l.length} pagos</small></div><div class="kpi"><span>Horas liberadas por falta de abono</span><b>${lib}</b><small>Volvieron a quedar disponibles</small></div></div><section class="caja tabla">${l.map(p => { const c = S.citas.find(x => x.id === p.citaId); return `<div class="fila"><span class="fn"><b>${c ? esc(clienta(c.clientaId).nombre) : 'Cita'}</b><small>${c ? esc(serv(c.servId).nombre) + ' · ' + fDia(c.fecha) + ' ' + c.hora : ''}</small></span><span class="ft"><em>${p.medio} · ${new Date(p.ts).toLocaleDateString('es-CL',{day:'numeric',month:'short'})}</em></span><b class="monto">${clp(p.monto)}</b></div>`; }).join('')}</section>`; },
@@ -661,9 +695,9 @@ function bloquePlan(p, conNombre) { const e = estadoPlan(p), c = clienta(p.clien
     <div class="plan-p" role="img" aria-label="${e.n} de ${p.total} sesiones hechas">${Array.from({ length:p.total }, (_,i) => `<i class="${i < e.n ? 'ok' : i === e.n && !e.completo ? 'sig' : ''}">${i < e.n ? '✓' : i + 1}</i>`).join('')}<span>${e.n} de ${p.total}</span></div><span class="ft">${estado}</span></div>
     ${e.completo || e.agendada ? '' : (c.recordado === hoy() ? '<span class="enviado">✓ Avisada hoy</span>' : `<button class="btn btn-s chico" data-act="a-rec-plan" data-id="${p.id}">Avisar</button>`)}</div>`; }
 function filaSeg(x) { const c = clienta(x.clientaId), s = serv(x.servId), yaHoy = c.recordado === hoy();
-  return `<div class="fila seg"><a class="inicial" href="#/admin/clientas/${c.id}">${esc(c.nombre[0])}</a><span class="fn"><b><a href="#/admin/clientas/${c.id}">${esc(c.nombre)}</a></b><small>Le toca <u>${esc(s.nombre)}</u> · último: ${esc(minus(serv(x.origenServ).nombre))} el ${fDia(x.ultima)}</small></span><span class="ft"><em class="${x.dias < 0 ? 'mal' : x.dias <= 7 ? 'ojo' : ''}">${textoDias(x.dias)}</em></span>${yaHoy ? '<span class="enviado">✓ Avisada hoy</span>' : `<button class="btn btn-s chico" data-act="a-rec" data-c="${c.id}" data-s="${x.servId}">Avisar</button>`}</div>`; }
+  return `<div class="fila seg"><a class="inicial" href="#/admin/clientas/${c.id}">${esc(c.nombre[0])}</a><span class="fn"><b><a href="#/admin/clientas/${c.id}">${esc(c.nombre)}</a></b><small>Le toca <u>${esc(s.nombre)}</u> · último: ${esc(minus(serv(x.origenServ).nombre))} el ${fDia(x.ultima)}</small></span><span class="ft"><em class="${x.dias < 0 ? 'mal' : x.dias <= 7 ? 'ojo' : ''}">${textoDias(x.dias)}</em></span>${yaHoy ? '<span class="enviado">✓ Avisada hoy</span>' : !aceptaAvisos(c) ? '<span class="sinpermiso" title="No aceptó recibir avisos por WhatsApp">Sin permiso de avisos</span>' : `<button class="btn btn-s chico" data-act="a-rec" data-c="${c.id}" data-s="${x.servId}">Avisar</button>`}</div>`; }
 function fichaClienta(id) { const c = clienta(id); if (!c) return '<p class="vacio">Clienta no encontrada.</p>'; const todas = S.citas.filter(x => x.clientaId === id && x.estado !== 'liberada').sort((a,b) => (b.fecha+b.hora).localeCompare(a.fecha+a.hora)), at = todas.filter(x => x.estado === 'atendida'), fut = todas.filter(x => x.estado === 'confirmada' || x.estado === 'pendiente'), toca = leToca(id);
-  return `<a class="enlace volver" href="#/admin/clientas">← Todas las clientas</a><div class="ficha-cab"><span class="inicial grande">${esc(c.nombre[0])}</span><div><h2>${esc(c.nombre)}</h2><p>${esc(c.tel)}</p></div><div class="ficha-n"><div><b>${at.length}</b><span>visitas</span></div><div><b>${clp(at.reduce((a,x) => a + serv(x.servId).precio, 0))}</b><span>total</span></div><div><b>${at.length ? fDia(at[0].fecha) : '—'}</b><span>última</span></div></div></div>
+  return `<a class="enlace volver" href="#/admin/clientas">← Todas las clientas</a><div class="ficha-cab"><span class="inicial grande">${esc(c.nombre[0])}</span><div><h2>${esc(c.nombre)}</h2><p>${esc(c.tel)} · <label class="permiso"><input type="checkbox" data-avisos="${c.id}" ${aceptaAvisos(c) ? 'checked' : ''}> acepta avisos por WhatsApp</label></p></div><div class="ficha-n"><div><b>${at.length}</b><span>visitas</span></div><div><b>${clp(at.reduce((a,x) => a + serv(x.servId).precio, 0))}</b><span>total</span></div><div><b>${at.length ? fDia(at[0].fecha) : '—'}</b><span>última</span></div></div></div>
   <div class="dos"><div><section class="caja destaca"><h3>Plan de tratamiento<small><button class="enlace-b" data-act="a-plan-nuevo" data-c="${c.id}">+ Crear plan</button></small></h3>${planesDe(id).map(p => bloquePlan(p, false)).join('') || '<p class="vacio">Sin plan. Un plan fija cuántas sesiones se harán y cada cuánto, y el sistema lleva la cuenta.</p>'}</section><section class="caja"><h3>Próxima sesión fuera de plan</h3>${toca.length ? toca.map(t => `<div class="toca"><div><b>${esc(serv(t.servId).nombre)}</b><small>${t.agendada ? `Ya agendada: ${fDia(t.agendada.fecha)} ${t.agendada.hora}` : `Sugerida para el ${fDia(t.fecha)} (${textoDias(t.dias)}) · ${serv(t.origenServ).ciclo} semanas después de su ${esc(minus(serv(t.origenServ).nombre))}`}</small></div>${t.agendada ? '<span class="enviado">✓ Agendada</span>' : (c.recordado === hoy() ? '<span class="enviado">✓ Avisada hoy</span>' : `<button class="btn btn-s chico" data-act="a-rec" data-c="${c.id}" data-s="${t.servId}">Avisar</button>`)}</div>`).join('') : '<p class="vacio">Nada pendiente fuera de sus planes.</p>'}</section>
     <section class="caja"><h3>Ficha técnica</h3><textarea id="a-notas" data-c="${c.id}" rows="4" placeholder="Tipo de pelo, fórmulas, alergias, preferencias…">${esc(c.notas)}</textarea><small class="nota">Se guarda sola. Solo la ve el equipo del salón.</small></section>${fut.length ? `<section class="caja"><h3>Citas futuras</h3>${fut.map(tarjetaCita).join('')}</section>` : ''}</div>
     <section class="caja"><h3>Historial<small>${at.length}</small></h3><ol class="hist">${at.map(x => `<li><time>${fDia(x.fecha)} ${deIso(x.fecha).getFullYear()}</time><div><b>${esc(serv(x.servId).nombre)}</b><small>${pro(x.proId).nombre} · ${clp(serv(x.servId).precio)} · ${ORIGEN[x.origen]}${(() => { const p = planesDe(id).find(p => p.servId === x.servId && x.fecha >= p.inicio); if (!p) return ''; const k = estadoPlan(p).hechas.findIndex(h => h.id === x.id); return k >= 0 && k < p.total ? ` · <u>sesión ${k + 1} de ${p.total} del plan</u>` : ''; })()}</small>${x.nota ? `<p>${esc(x.nota)}</p>` : ''}</div></li>`).join('') || '<p class="vacio">Primera visita pendiente.</p>'}</ol></section></div>`; }
@@ -720,6 +754,7 @@ document.addEventListener('click', e => { const sc = e.target.closest('[data-scr
   if (a === 'g-ir') { if (window.innerWidth < 700) G.abierta = false; GUIA[G.paso].ir(); return pintarGuia(); }
   if (a === 'reservar') return abrirReserva(d.serv); if (a === 'chat') return abrirChat(); if (a === 'chip') return botRecibe(d.v, d.t); if (a === 'chat-pagar') return chatPagar(el);
   if (a === 'reiniciar') { try { localStorage.removeItem(CLAVE); } catch(e) {} S = semilla(); C = null; R = null; G = { abierta: window.innerWidth >= 700, paso:0 }; pintarGuia(); A = { dia:null, q:'', cita:null, rec:null, plan:null }; $('#chat').classList.remove('on'); $('#chat').innerHTML = ''; $('#modal').innerHTML = ''; pintar(); return toast('Demo reiniciada con los datos iniciales.'); }
+  if (a === 'a-csv') { descargar(`clientas-${hoy()}.csv`, csvClientas()); return toast('Archivo descargado. Se abre en Excel o Numbers.'); }
   if (a === 'a-dia') { A.dia = d.id; return pintar(); } if (a === 'a-nueva') return abrirReserva(null, true); if (a === 'a-cita') { A.cita = d.id; A.rec = null; return pintar(); }
   if (a === 'a-cerrar' || a === 'a-cerrar-ir') { A.cita = null; A.rec = null; A.plan = null; return pintar(); }
   if (a === 'a-rec') { A.rec = leToca(d.c).find(x => x.servId === d.s); A.cita = null; return pintar(); }
@@ -737,7 +772,8 @@ document.addEventListener('submit', e => { if (e.target.dataset.form === 'chat')
 document.addEventListener('input', e => { const el = e.target;
   if (el.id === 'a-q') { A.q = el.value; pintar(); } if (el.id === 'a-notas') { clienta(el.dataset.c).notas = el.value; guardar(); }
   if (el.dataset.campo) { const s = serv(el.dataset.id), v = parseInt(el.value, 10); s[el.dataset.campo] = el.dataset.campo === 'ciclo' ? (v > 0 ? v : null) : (v > 0 ? v : s[el.dataset.campo]); guardar(); const ab = document.querySelector(`[data-ab="${s.id}"]`); if (ab) ab.textContent = clp(abonoDe(s)); }
-  if (el.dataset.bot) { S.bot[el.dataset.bot] = el.checked; guardar(); } });
+  if (el.dataset.bot) { S.bot[el.dataset.bot] = el.checked; guardar(); }
+  if (el.dataset.avisos) { clienta(el.dataset.avisos).avisos = el.checked; guardar(); } });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (R) AccR['r-cerrar'](); else if (A.cita || A.rec) { A.cita = null; A.rec = null; A.plan = null; pintar(); } } });
 window.addEventListener('hashchange', () => { A.cita = null; A.rec = null; A.plan = null; pintar(); if (!location.hash.includes('/clientas/')) window.scrollTo(0,0); });
 cargar(); pintar(); pintarGuia(); setInterval(tic, 1000);
