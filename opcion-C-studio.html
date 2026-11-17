@@ -254,7 +254,7 @@ h1,h2,h3{letter-spacing:-.015em}.sec h2{font-size:clamp(38px,5.6vw,72px);line-he
 .equipo{background:#120A1A}.eq-foto{border-radius:26px;aspect-ratio:4/5;transition:transform .5s cubic-bezier(.22,1,.36,1)}.eq:hover .eq-foto{transform:translateY(-6px)}
 .cierre{position:relative;overflow:hidden;min-height:70svh;display:grid;place-content:center;background:radial-gradient(60% 80% at 50% 110%,#4A1F6B,#0E0813 70%)}.cierre h2{font-size:clamp(44px,8vw,110px);letter-spacing:-.03em}
 .pie{background:#0A0610;border:0}
-@media(max-width:900px){.historia{grid-template-columns:1fr}.hist-img .foto{min-height:300px}.pila{top:42px;min-height:0;height:88svh}.hero{align-items:end}}
+@media(max-width:900px){.historia{grid-template-columns:1fr}.hist-img .foto{min-height:300px}.pila{position:relative;top:auto;height:auto;min-height:0;padding-top:clamp(70px,10vh,100px);padding-bottom:40px}.pila-foto::after{background:linear-gradient(180deg,rgba(14,8,19,.9) 0%,rgba(14,8,19,.72) 60%,rgba(14,8,19,.5) 100%)}.hero{align-items:end}}
 @media(max-width:640px){.hero h1{font-size:clamp(48px,15vw,80px)}.pila li{font-size:14px}.nav nav{display:none}}
 @media(prefers-reduced-motion:reduce){.hero-foto,.hero h1 span,.hero p,.hero-b,.hero-pista span{animation:none;opacity:1;transform:none}.js .rev{opacity:1;transform:none;transition:none}.pila-foto,.hist-img .foto{animation:none}}
 
