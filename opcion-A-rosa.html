@@ -507,7 +507,7 @@ function mechas(seed, n = 30) {
 }
 const foto = (nombre, seed, extra='') => `<div class="foto ${extra}" data-foto="${nombre}">${mechas(seed)}</div>`;
 const FOTOS = {};
-function cargarFotos() { if (!SALON.fotos) return; document.querySelectorAll('[data-foto]').forEach(el => { const n = el.dataset.foto, poner = () => { el.style.backgroundImage = `url(img/${n}.jpg)`; el.classList.add('con-foto'); };
+function cargarFotos() { if (!(SALON.fotos || (typeof TEMA !== 'undefined' && TEMA.fotos))) return; document.querySelectorAll('[data-foto]').forEach(el => { const n = el.dataset.foto, poner = () => { el.style.backgroundImage = `url(img/${n}.jpg)`; el.classList.add('con-foto'); };
   if (FOTOS[n] === true) return poner(); if (FOTOS[n] === false) return; const im = new Image(); im.onload = () => { FOTOS[n] = true; poner(); }; im.onerror = () => { FOTOS[n] = false; }; im.src = `img/${n}.jpg`; }); }
 
 const ICONO = {
